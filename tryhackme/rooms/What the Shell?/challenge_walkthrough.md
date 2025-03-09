@@ -1,4 +1,4 @@
-# TRYHACKME : What the Shell?
+# TRYHACKME : What the Shell? (INCOMPLETE)
 ***NOTE: Documented this incase I'll be using the same method to other ctf challenges.***
 
 ## Linux Shell Sandbox
