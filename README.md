@@ -1,6 +1,6 @@
 # WRITE-UPS #
 
-> ***NOTE: These are my personal write-ups that are still in need of rewriting and editing. Some are incomplete.***
+> ***NOTE: These are my ctf write-ups that are still in progress or in need of rewriting and editing.***
 
-The write-ups are straight forward and doesn't contain any flags/answers or direct explanations at all lmao.
-So if you're here for fast results, these write-ups are not for you, go look somewhere else. On the other hand, if you genuinely want to learn and enjoy the process, these might help you! If not, mb.
+These write-ups are straight forward and doesn't contain any flags/answers (most contains no direct explanations at all).
+So if you're here for fast results, these write-ups are not for you. Go look somewhere else. On the other hand, if you genuinely want to learn and enjoy the process, these might help you! If not, mb.
