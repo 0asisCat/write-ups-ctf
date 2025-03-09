@@ -1,48 +1,87 @@
 # BANDIT
+> **NOTE: This is a straightforward write-up.** So if you don't fw this type of write-up, go search somewhere else.
 
-## level 0
-pw = bandit0
+
+## Level 0
+**pw = bandit0**
+```
         cat readme
+```
 
-level 1 pw = ZjLjTmM6FvvyRnrb2rfNWOZOTa6ip5If
+## Level 1
+**pw = ZjLjTmM6FvvyRnrb2rfNWOZOTa6ip5If**
+```
         cat < -
+```
 
-level 2 pw = 263JGJPfgU6LtdEvgfWU1XP5yac29mFx
+## Level 2
+**pw = 263JGJPfgU6LtdEvgfWU1XP5yac29mFx**
+```
         cat "spaces in this filename"
+```
 
-level 3 pw = MNk8KNH3Usiio41PRUEoDFPqfxLPlSmx
+# Level 3
+**pw = MNk8KNH3Usiio41PRUEoDFPqfxLPlSmx**
+```
         cat ...Hiding-From-You
+```
 
-level 4 pw = 2WmrDFRmJIq3IPxneAaMGhap0pFhF3NJ
+# Level 4
+**pw = 2WmrDFRmJIq3IPxneAaMGhap0pFhF3NJ**
+```
         find . -type f | xargs file | grep text
         cat ./-file07
+```
 
-level 5 pw = 4oQYVPkxZOOEOO5pTW81FB8j8lxXGUQw
+# Level 5
+**pw = 4oQYVPkxZOOEOO5pTW81FB8j8lxXGUQw**
+```
         cd inhere
         find . -type f -size 1033c
         cat ./maybehere07/.file2
+```
 
-level 6 pw = HWasnPhtq9AVKe0dmk45nxy20cvUa6EG
+# Level 6
+**pw = HWasnPhtq9AVKe0dmk45nxy20cvUa6EG**\
+```
         find . -perm -g+r -user bandit7 -group bandit6 -print 2>/dev/null
         cat ./var/lib/dpkg/info/bandit7.password
+```
 
-level 7 pw = morbNTDkSW6jIlUc0ymOdMaLnOlFVAaj
+# Level 7
+**pw = morbNTDkSW6jIlUc0ymOdMaLnOlFVAaj**
+```
         cat data.txt | grep millionth
+```
 
-level 8 pw = dfwvzFQi4mU0wfNbFOe9RoWskMLg7eEc
+# Level 8
+**pw = dfwvzFQi4mU0wfNbFOe9RoWskMLg7eEc**
+```
         sort data.txt | uniq -u
+```
 
-level 9 pw = 4CKMh1JI91bUIZZPXDqGanal4xvAg0JM
+# Level 9
+**pw = 4CKMh1JI91bUIZZPXDqGanal4xvAg0JM**
+```
         strings data.txt | grep ===
+```
 
-level 10 pw = FGUW5ilLVJrxX9kMYMmlN4MgbpfMiqey
+# Level 10
+**pw = FGUW5ilLVJrxX9kMYMmlN4MgbpfMiqey**
+```
         base64 -d data.txt
+```
 
-level 11 pw = dtR173fZKb0RRsDFSGsg2RWnpNVj3qRr
+# Level 11
+**pw = dtR173fZKb0RRsDFSGsg2RWnpNVj3qRr**
+```
         cat data.txt | tr 'A-MN-Za-mn-z' 'N-ZA-Mn-za-m'
         (or simply look online for rot13 decoder)
+```
 
-level 12 pw = 7x16WNeHIi5YkIhWsfFIqoognUTyj9Q4
+# Level 12
+**pw = 7x16WNeHIi5YkIhWsfFIqoognUTyj9Q4**
+```
         (cheated by getting existing dir in /tmp)
         cd /tmp
         mkdir s3cr3t
@@ -68,22 +107,34 @@ level 12 pw = 7x16WNeHIi5YkIhWsfFIqoognUTyj9Q4
         file data8.bin(data8.bin: gzip compressed data)
         mv data8.bin data8.gz
         cat data8
+```
 
-level 13 pw = FO5dwFsc0cbaIiH0h8J2eUks2vdTDwAn
+# Level 13
+**pw = FO5dwFsc0cbaIiH0h8J2eUks2vdTDwAn**
+```
         ls -la
         ssh -i sshkey.private bandit14@bandit.labs.overthewire.org -p 2220
+```
 
-level 14 pw = MU4VWeTyJk8ROof1qqmcBPaLh7lDCPvS
+# Level 14
+**pw = MU4VWeTyJk8ROof1qqmcBPaLh7lDCPvS**
+```
         cat /etc/bandit_pass/bandit14
         (copy the password)
         nc localhost 30000
         (paste the password)
+```
 
-level 15 pw = 8xCjnmgoKbGLhHFAZlGE5Tmu4M2tKJQo
+# Level 15
+**pw = 8xCjnmgoKbGLhHFAZlGE5Tmu4M2tKJQo**
+```
         openssl s_client -connect localhost:30001
         (paste pw)
+```
 
-level 16 pw = kSkvUpMQ7lBYyCM4GBPvCvT1BfWRy0Dx
+# Level 16
+**pw = kSkvUpMQ7lBYyCM4GBPvCvT1BfWRy0Dx**
+```
         ip a s
         (copy ens5)
         nmap -sVC [ens5 ip] -p31000-32000
@@ -97,8 +148,11 @@ level 16 pw = kSkvUpMQ7lBYyCM4GBPvCvT1BfWRy0Dx
         (paste the RSA priv key)
         chmod 700 private.key
         ssh -i private.key bandit17@localhost -p 2220
+```
 
-level 17 pw = EReVavePLFHtFlFsjn3hyzMlvSuSAcRD
+# Level 17
+**pw = EReVavePLFHtFlFsjn3hyzMlvSuSAcRD**
+```
         diff -c passwords.new passwords.old
         (results: 
                 from ! ktfgBvpMzWKR5ENj26IbLGSblgUG9CzB 
@@ -110,12 +164,17 @@ level 17 pw = EReVavePLFHtFlFsjn3hyzMlvSuSAcRD
         (paste bandit18 pw)
         ssh bandit18@bandit.labs.overthewire.org -p 2220 cat readme
         (paste bandit18 pw)
+```
 
-level 18 pw = cGWpMaKXVwDUNgPAVJbWYuGHVn9zl3j8
+# Level 18
+**pw = cGWpMaKXVwDUNgPAVJbWYuGHVn9zl3j8**
+```
         ssh bandit18@bandit.labs.overthewire.org -p 2220 ls
         (paste bandit18 pw)
         ssh bandit18@bandit.labs.overthewire.org -p 2220 cat readme
         (paste bandit18 pw)
+```
 
-level 19 pw = cGWpMaKXVwDUNgPAVJbWYuGHVn9zl3j8
+# Level 19
+**pw = cGWpMaKXVwDUNgPAVJbWYuGHVn9zl3j8**
 
