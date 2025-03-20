@@ -158,3 +158,8 @@ User mitch may run the following commands on Machine:
 ```
 
 **Go to [GTFOBINS](https://gtfobins.github.io/) and look for the command to compromise vim with sudo privilege.**
+```
+# find / -name "*.txt" 2>/dev/null
+...
+// find the most interesting txt
+```
