@@ -1,1 +1,0 @@
-# TRYHACKME : Bounty Hacker
