@@ -1,86 +1,84 @@
 # BANDIT
-> **NOTE: This is a straightforward write-up.** So if you don't fw this type of write-up, go search somewhere else.
-
 
 ## Level 0
-**pw = bandit0**
+**pass = bandit0**
 ```
         cat readme
 ```
 
 ## Level 1
-**pw = ZjLjTmM6FvvyRnrb2rfNWOZOTa6ip5If**
+**pass = ZjLjTmM6FvvyRnrb2rfNWOZOTa6ip5If**
 ```
         cat < -
 ```
 
 ## Level 2
-**pw = 263JGJPfgU6LtdEvgfWU1XP5yac29mFx**
+**pass = 263JGJPfgU6LtdEvgfWU1XP5yac29mFx**
 ```
         cat "spaces in this filename"
 ```
 
 # Level 3
-**pw = MNk8KNH3Usiio41PRUEoDFPqfxLPlSmx**
+**pass = MNk8KNH3Usiio41PRUEoDFPqfxLPlSmx**
 ```
         cat ...Hiding-From-You
 ```
 
 # Level 4
-**pw = 2WmrDFRmJIq3IPxneAaMGhap0pFhF3NJ**
+**pass = 2WmrDFRmJIq3IPxneAaMGhap0pFhF3NJ**
 ```
         find . -type f | xargs file | grep text
-        cat ./-file07
+        cat ./-file07                               // OR cat < -file07
 ```
 
 # Level 5
-**pw = 4oQYVPkxZOOEOO5pTW81FB8j8lxXGUQw**
+**pass = 4oQYVPkxZOOEOO5pTW81FB8j8lxXGUQw**
 ```
         cd inhere
-        find . -type f -size 1033c
+        find . -type f -readable -size 1033c ! -executable
         cat ./maybehere07/.file2
 ```
 
 # Level 6
-**pw = HWasnPhtq9AVKe0dmk45nxy20cvUa6EG**\
+**pass = HWasnPhtq9AVKe0dmk45nxy20cvUa6EG**
 ```
-        find . -perm -g+r -user bandit7 -group bandit6 -print 2>/dev/null
+        find . -perm -g+r -user bandit7 -group bandit6 -print 2>/dev/null        // OR find / -type f -size 33c -user bandit7 -group bandit6 2>dev/null
         cat ./var/lib/dpkg/info/bandit7.password
 ```
 
 # Level 7
-**pw = morbNTDkSW6jIlUc0ymOdMaLnOlFVAaj**
+**pass = morbNTDkSW6jIlUc0ymOdMaLnOlFVAaj**
 ```
         cat data.txt | grep millionth
 ```
 
 # Level 8
-**pw = dfwvzFQi4mU0wfNbFOe9RoWskMLg7eEc**
+**pass = dfwvzFQi4mU0wfNbFOe9RoWskMLg7eEc**
 ```
         sort data.txt | uniq -u
 ```
 
 # Level 9
-**pw = 4CKMh1JI91bUIZZPXDqGanal4xvAg0JM**
+**pass = 4CKMh1JI91bUIZZPXDqGanal4xvAg0JM**
 ```
         strings data.txt | grep ===
 ```
 
 # Level 10
-**pw = FGUW5ilLVJrxX9kMYMmlN4MgbpfMiqey**
+**pass = FGUW5ilLVJrxX9kMYMmlN4MgbpfMiqey**
 ```
-        base64 -d data.txt
+        base64 -d data.txt        // OR cat data.txt | base64 -d 
 ```
 
 # Level 11
-**pw = dtR173fZKb0RRsDFSGsg2RWnpNVj3qRr**
+**pass = dtR173fZKb0RRsDFSGsg2RWnpNVj3qRr**
 ```
         cat data.txt | tr 'A-MN-Za-mn-z' 'N-ZA-Mn-za-m'
         (or simply look online for rot13 decoder)
 ```
 
 # Level 12
-**pw = 7x16WNeHIi5YkIhWsfFIqoognUTyj9Q4**
+**pass = 7x16WNeHIi5YkIhWsfFIqoognUTyj9Q4**
 ```
         (cheated by getting existing dir in /tmp)
         cd /tmp
@@ -106,18 +104,19 @@
         tar -xf data6.bin.out
         file data8.bin(data8.bin: gzip compressed data)
         mv data8.bin data8.gz
+        gunzip data8.gz
         cat data8
 ```
 
 # Level 13
-**pw = FO5dwFsc0cbaIiH0h8J2eUks2vdTDwAn**
+**pass = FO5dwFsc0cbaIiH0h8J2eUks2vdTDwAn**
 ```
         ls -la
         ssh -i sshkey.private bandit14@bandit.labs.overthewire.org -p 2220
 ```
 
 # Level 14
-**pw = MU4VWeTyJk8ROof1qqmcBPaLh7lDCPvS**
+**pass = MU4VWeTyJk8ROof1qqmcBPaLh7lDCPvS**
 ```
         cat /etc/bandit_pass/bandit14
         (copy the password)
@@ -126,14 +125,14 @@
 ```
 
 # Level 15
-**pw = 8xCjnmgoKbGLhHFAZlGE5Tmu4M2tKJQo**
+**pass = 8xCjnmgoKbGLhHFAZlGE5Tmu4M2tKJQo**
 ```
         openssl s_client -connect localhost:30001
         (paste pw)
 ```
 
 # Level 16
-**pw = kSkvUpMQ7lBYyCM4GBPvCvT1BfWRy0Dx**
+**pass = kSkvUpMQ7lBYyCM4GBPvCvT1BfWRy0Dx**
 ```
         ip a s
         (copy ens5)
@@ -151,7 +150,7 @@
 ```
 
 # Level 17
-**pw = EReVavePLFHtFlFsjn3hyzMlvSuSAcRD**
+**pass = EReVavePLFHtFlFsjn3hyzMlvSuSAcRD**
 ```
         diff -c passwords.new passwords.old
         (results: 
@@ -167,7 +166,7 @@
 ```
 
 # Level 18
-**pw = cGWpMaKXVwDUNgPAVJbWYuGHVn9zl3j8**
+**pass = cGWpMaKXVwDUNgPAVJbWYuGHVn9zl3j8**
 ```
         ssh bandit18@bandit.labs.overthewire.org -p 2220 ls
         (paste bandit18 pw)
@@ -176,5 +175,5 @@
 ```
 
 # Level 19
-**pw = cGWpMaKXVwDUNgPAVJbWYuGHVn9zl3j8**
+**pass = cGWpMaKXVwDUNgPAVJbWYuGHVn9zl3j8**
 
