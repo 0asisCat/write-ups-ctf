@@ -4,5 +4,5 @@
 > 
 > If you found some errors, feel free to correct me!
 
-These write-ups are straightforward and doesn't reveal flags/answers directly.
+These write-ups doesn't reveal flags/answers directly.
 So if you're here with the intention to be spoon-fed, ciao~ and go look somewhere else.
