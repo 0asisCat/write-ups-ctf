@@ -28,6 +28,14 @@ First let's run some basic dir fuzzing:
 /spip                 (Status: 301) [Size: 313] [--> http://10.201.68.178/spip/]      
 ```
 
+## Enumeration
+You can use the `whatweb` tool to enumerate the website
+```
+$ whatweb http://[TARGET-IP]/
+```
+
+We now find that the spip version if 4.2.0.
+
 ## Searchsploit
 After the enumeration of the cms version, let's look for available exploit of the following version:\
 ```
