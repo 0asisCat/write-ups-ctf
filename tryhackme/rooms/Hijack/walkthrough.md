@@ -40,14 +40,16 @@ HOP RTT       ADDRESS
 
 ### PORT 80 HTTP
 
-#### Gobuster
+#### GOBUSTER
 ```
 ```
 
-#### Web Enum
+#### WEB ENUM
 After signing up a new account. I tried going back to the `config.php`.
 
+<img width="1305" height="939" alt="Image" src="https://github.com/user-attachments/assets/a7c403bf-8144-4087-b2a8-621d4f7fe1d9" />
 
+The cookie seems interesting. I tried to crack it on [cyberchef](https://gchq.github.io/CyberChef/), and sure enough we got a BASE64 encoded string. 
 
 ### PORT 111 RPCBIND
 
