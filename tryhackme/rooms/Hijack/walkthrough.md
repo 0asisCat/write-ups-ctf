@@ -1,8 +1,6 @@
 # TRYHACKME : Hijack
 Misconfigs conquered, identities claimed.
 
-# RECON
-
 ## NMAP
 ```
 PORT     STATE SERVICE VERSION
@@ -36,22 +34,62 @@ HOP RTT       ADDRESS
 5   327.72 ms 10.201.20.95
 ```
 
-### PORT 21 FTP
+## PORT 21 FTP
 
-### PORT 80 HTTP
+## PORT 80 HTTP
 
-#### GOBUSTER
+### GOBUSTER
 ```
+$ gobuster dir -u "http://10.201.9.217/" -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -x .php                        
+===============================================================
+Gobuster v3.6
+by OJ Reeves (@TheColonial) & Christian Mehlmauer (@firefart)
+===============================================================
+[+] Url:                     http://10.201.9.217/
+[+] Method:                  GET
+[+] Threads:                 10
+[+] Wordlist:                /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt
+[+] Negative Status codes:   404
+[+] User Agent:              gobuster/3.6
+[+] Extensions:              php
+[+] Timeout:                 10s
+===============================================================
+Starting gobuster in directory enumeration mode
+===============================================================
+/.php                 (Status: 403) [Size: 277]
+/index.php            (Status: 200) [Size: 487]
+/login.php            (Status: 200) [Size: 822]
+/signup.php           (Status: 200) [Size: 1002]
+/logout.php           (Status: 302) [Size: 0] [--> index.php]
+/config.php           (Status: 200) [Size: 0]                     // !!!!! INTERESTING !!!!!!
+/administration.php   (Status: 200) [Size: 51]
+/navbar.php           (Status: 200) [Size: 304]
+
 ```
 
-#### WEB ENUM
-After signing up a new account. I tried going back to the `config.php`.
+### WEB ENUM
+The main page is under construction and there seems to be nothing interesting.
+
+Even the `config.php` only displays a blank page, although we can access the session cookies but it's not really useful. The `administration.php` is also inaccessible.
+
+Let's try signing up. My created credential is `oas:password`
+
+I tried going back to the `config.php` after signing up, and there seems to be interesting with the cookies.
 
 <img width="1305" height="939" alt="Image" src="https://github.com/user-attachments/assets/a7c403bf-8144-4087-b2a8-621d4f7fe1d9" />
 
 The cookie seems interesting. I tried to crack it on [cyberchef](https://gchq.github.io/CyberChef/), and sure enough we got a BASE64 encoded string. 
 
-### PORT 111 RPCBIND
+<img width="1044" height="515" alt="Image" src="https://github.com/user-attachments/assets/5075ab4b-6ed5-44a4-941e-6d8cc72cc12b" />
+
+It is in a `username:password` format I reckon. I tried it on [crackstation](https://crackstation.net/) and my guess was right.
+
+<img width="1021" height="73" alt="Image" src="https://github.com/user-attachments/assets/f2806a66-c0d2-4e6f-ace5-20d3e658910a" />
+
+### BRUTEFORCE
+
+
+## PORT 111 RPCBIND
 
 ```
 $ rpcinfo -p 10.201.20.95   
